@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_app/tabs/comments_tab.dart';
 import 'package:my_app/tabs/users_tab.dart';
 
+
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -13,6 +15,7 @@ class HomeScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text("API"),
           centerTitle: true,
+          actions: [IconButton(onPressed: () {}, icon: Icon(Icons.add))],
         ),
         body: const Column(
           children: [
