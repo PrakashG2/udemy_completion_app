@@ -35,6 +35,22 @@ class _CommentsTabState extends State<CommentsTab> {
     }
   }
 
+  Future<void> _deletePost(String postId) async {
+    final url = 'https://jsonplaceholder.typicode.com/comments/$postId';
+    final uri = Uri.parse(url);
+
+    final response = await http.delete(uri);
+
+    if (response.statusCode == 200) {
+      print('-------------------------------------------------------------');
+      print('Post deleted successfully:--- response code = 200');
+      print('Deleted Post ID: $postId');
+      print('-------------------------------------------------------------');
+    } else {
+      print('Failed to delete post');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (posts.isEmpty) {
@@ -42,16 +58,33 @@ class _CommentsTabState extends State<CommentsTab> {
     }
     return Scaffold(
       body: ListView.builder(
-          itemCount: posts.length,
-          itemBuilder: (context, index) {
+        itemCount: posts.length,
+        itemBuilder: (context, index) {
 //-----------------------------------------------> TO PROCESS THE NAME
-            String truncatedName = posts[index].name.length > 20
-                ? posts[index].name.substring(0, 20) +
-                    '...' // Adjust the character limit as needed
-                : posts[index].name;
+          String truncatedName = posts[index].name.length > 20
+              ? posts[index].name.substring(0, 20) +
+                  '...' // Adjust the character limit as needed
+              : posts[index].name;
 
-            return Padding(
-              padding: EdgeInsets.all(10),
+          return Padding(
+            padding: EdgeInsets.all(10),
+            child: Dismissible(
+              key: ValueKey(posts[index].id), // Use a unique key for each item
+
+              onDismissed: (direction) {
+                // Remove the item from the list when dismissed
+                setState(() {
+                  posts.removeAt(index);
+                });
+                _deletePost(index.toString());
+              },
+              background: Container(
+                color: Colors.red,
+                child: Icon(Icons.delete, color: Colors.white),
+                alignment: Alignment.centerRight,
+                padding: EdgeInsets.only(right: 20),
+              ),
+              direction: DismissDirection.endToStart,
               child: Container(
                 height: 150,
                 width: double.infinity,
@@ -73,7 +106,7 @@ class _CommentsTabState extends State<CommentsTab> {
                               style: TextStyle(color: Colors.white),
                             ),
                           ),
-                          SizedBox(
+                          const SizedBox(
                               width:
                                   10), // Add some spacing between the avatar and text
                           Column(
@@ -82,7 +115,7 @@ class _CommentsTabState extends State<CommentsTab> {
                               Text(truncatedName),
                               Text(
                                 posts[index].email,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Color.fromARGB(255, 85, 81, 81),
                                 ),
                               ),
@@ -110,20 +143,23 @@ class _CommentsTabState extends State<CommentsTab> {
                       ),
                     ),
                     Expanded(
-                        child: Padding(
-                      padding: EdgeInsets.all(10),
-                      child: SingleChildScrollView(
-                        child: Text(
-                          posts[index].body,
-                          style: TextStyle(fontSize: 16),
+                      child: Padding(
+                        padding: EdgeInsets.all(10),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            posts[index].body,
+                            style: TextStyle(fontSize: 16),
+                          ),
                         ),
                       ),
-                    )),
+                    ),
                   ],
                 ),
               ),
-            );
-          }),
+            ),
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(
