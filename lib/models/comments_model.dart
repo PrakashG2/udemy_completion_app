@@ -1,3 +1,5 @@
+
+
 class CommentsModel {
   const CommentsModel(
       {required this.postId,
@@ -14,21 +16,22 @@ class CommentsModel {
 
   factory CommentsModel.fromJson(Map<String, dynamic> json) {
     return CommentsModel(
-      postId: json['postId'],
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      body: json['body'],
+      postId: json['postId'] ?? "",
+      id: json['id'] ?? "",
+      name: json['name'] ?? "",
+      email: json['email'] ?? "",
+      body: json['body'] ?? "",
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'postId': postId,
-      'id': id,
-      'name': name,
-      'email': email,
-      'body': body,
-    };
+    final Map<String, dynamic> data = <String, dynamic>{};
+
+    data['postId'] = postId;
+    data['id'] = id;
+    data['name'] = name;
+    data['email'] = email;
+    data['body'] = body;
+    return data;
   }
 }

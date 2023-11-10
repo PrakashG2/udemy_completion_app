@@ -2,12 +2,11 @@
 
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
-
-
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
 
     <application
-        android:label="my_app"
+        android:label="api_prov_try"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -38,11 +37,21 @@
             android:value="2" />
     </application>
     <queries>
+  <!-- If your app checks for SMS support -->
+  <intent>
+    <action android:name="android.intent.action.VIEW" />
+    <data android:scheme="sms" />
+  </intent>
   <!-- If your app checks for call support -->
   <intent>
     <action android:name="android.intent.action.VIEW" />
     <data android:scheme="tel" />
   </intent>
+  <intent>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="https" />
+</intent>
 </queries>
 
 </manifest>

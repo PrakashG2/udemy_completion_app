@@ -1,12 +1,14 @@
-import 'dart:convert';
+import 'dart:async';
 
+import 'package:api_prov_try/provider/comments_data_class.dart';
+import 'package:api_prov_try/screens/commentsInputs_screen.dart';
+import 'package:api_prov_try/widgets/comment_input_widget.dart';
+import 'package:api_prov_try/widgets/snackbar_widget.dart';
+import 'package:expandable/expandable.dart';
 import 'package:flutter/material.dart';
-import 'package:my_app/api_services/comments_api.dart';
-import 'package:my_app/model/comments_model.dart';
-
-import 'package:http/http.dart' as http;
-import 'package:my_app/widgets/add_comment_new.dart';
-import 'package:my_app/widgets/add_comment_widget.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:provider/provider.dart';
+import 'package:readmore/readmore.dart';
 
 class CommentsTab extends StatefulWidget {
   const CommentsTab({super.key});
@@ -16,81 +18,85 @@ class CommentsTab extends StatefulWidget {
 }
 
 class _CommentsTabState extends State<CommentsTab> {
-  List<CommentsModel> posts = [];
+  
+  //-------------------------------------------------------------------------> BUTTONS
+  Icon commentSocioButtons() {
+    return Icon(Icons.thumbs_up_down);
+  }
+  //-------------------------------------------------------------------------> INIT
 
   @override
   void initState() {
     super.initState();
-    _fetchPosts();
+    final postModel = Provider.of<CommentsProvider>(context, listen: false);
+    postModel.getPostData();
+
+   
   }
 
-  Future<void> _fetchPosts() async {
-    try {
-      final List<CommentsModel> fetchedPosts = await ApiServices.fetchPosts();
-      setState(() {
-        posts = fetchedPosts;
-      });
-    } catch (e) {
-      print('Error fetching posts: $e');
-    }
-  }
+  
 
-  Future<void> _deletePost(String postId) async {
-    final url = 'https://jsonplaceholder.typicode.com/comments/$postId';
-    final uri = Uri.parse(url);
-
-    final response = await http.delete(uri);
-
-    if (response.statusCode == 200) {
-      print('-------------------------------------------------------------');
-      print('Post deleted successfully:--- response code = 200');
-      print('Deleted Post ID: $postId');
-      print('-------------------------------------------------------------');
-    } else {
-      print('Failed to delete post');
-    }
-  }
+  //-----------------------------------------------------------------------> UI PART
 
   @override
   Widget build(BuildContext context) {
-    if (posts.isEmpty) {
-      return Center(child: CircularProgressIndicator());
+    final commentsProvider = Provider.of<CommentsProvider>(context);
+//-----------------------------------------------------------> LOADER TO COMPENSATE API FETCH DELAY
+    if (commentsProvider.getPostloading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    //----------------------------------------------------> API EMPTY RESPOND HANDLER
+    if (commentsProvider.commentsList!.isEmpty) {
+      return const Center(child: Text("oops, its empty"));
     }
     return Scaffold(
       body: ListView.builder(
-        itemCount: posts.length,
+        itemCount: commentsProvider.commentsList?.length,
         itemBuilder: (context, index) {
 //-----------------------------------------------> TO PROCESS THE NAME
-          String truncatedName = posts[index].name.length > 20
-              ? posts[index].name.substring(0, 20) +
-                  '...' // Adjust the character limit as needed
-              : posts[index].name;
+          String? truncatedName;
+          if (commentsProvider.commentsList != null &&
+              index < commentsProvider.commentsList!.length) {
+            truncatedName = commentsProvider.commentsList![index].name.length >
+                    20
+                ? '${commentsProvider.commentsList![index].name.substring(0, 20)}...'
+                : commentsProvider.commentsList![index].name;
+          } else {
+            truncatedName = '';
+          }
 
           return Padding(
-            padding: EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
             child: Dismissible(
-              key: ValueKey(posts[index].id), // Use a unique key for each item
-
+              key: ValueKey(commentsProvider.commentsList![index]),
               onDismissed: (direction) {
-                // Remove the item from the list when dismissed
                 setState(() {
-                  posts.removeAt(index);
+                  commentsProvider.commentsList?.removeAt(index);
                 });
-                _deletePost(index.toString());
+                int postId = commentsProvider.commentsList![index].id;
+                commentsProvider.customDismissFunction(postId);
+                if (commentsProvider.dismissStatus == 200) {
+                  print(commentsProvider.dismissStatus);
+                  AwesomeSnackbar.show(
+                      context, "Dissmised Successfully", Icons.thumb_up);
+                } else {
+                  AwesomeSnackbar.show(
+                      context, "something went wrong", Icons.thumb_down);
+                }
               },
               background: Container(
                 color: Colors.red,
-                child: Icon(Icons.delete, color: Colors.white),
                 alignment: Alignment.centerRight,
-                padding: EdgeInsets.only(right: 20),
+                padding: const EdgeInsets.only(right: 20),
+                child: const Icon(Icons.delete, color: Colors.white),
               ),
               direction: DismissDirection.endToStart,
               child: Container(
-                height: 150,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  color: const Color.fromARGB(255, 212, 208, 208),
+                  color: const Color.fromARGB(255, 233, 231, 231),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,55 +108,103 @@ class _CommentsTabState extends State<CommentsTab> {
                           CircleAvatar(
                             backgroundColor: Colors.blue,
                             child: Text(
-                              posts[index].name[0].toUpperCase(),
-                              style: TextStyle(color: Colors.white),
+                              commentsProvider.commentsList?[index].name[0]
+                                      .toUpperCase() ??
+                                  "",
+                              style: const TextStyle(color: Colors.white),
                             ),
                           ),
-                          const SizedBox(
-                              width:
-                                  10), // Add some spacing between the avatar and text
+                          const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(truncatedName),
                               Text(
-                                posts[index].email,
+                                "@ ${commentsProvider.commentsList![index].email}",
                                 style: const TextStyle(
                                   color: Color.fromARGB(255, 85, 81, 81),
                                 ),
                               ),
                             ],
                           ),
-                          Spacer(),
+                          const Spacer(),
                           Row(
                             children: [
                               IconButton(
                                   onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AddCommentNew(
-                                          editMode: true,
-                                          postId: index,
-                                        ); // Show the AddComment dialog
-                                      },
-                                    );
+                                    // showDialog(
+                                    //   context: context,
+                                    //   builder: (BuildContext context) {
+                                    //     return CommentInput(
+                                    //         editMode: true, postId: index);
+                                    //   },
+                                    // );
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => CommentInputs(
+                                                editMode: true, id: (index))));
                                   },
-                                  icon: Icon(Icons.edit))
+                                  icon: const Icon(Icons.edit))
                             ],
                           )
                         ],
                       ),
                     ),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.all(10),
-                        child: SingleChildScrollView(
-                          child: Text(
-                            posts[index].body,
-                            style: TextStyle(fontSize: 16),
+                    Padding(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Column(
+                        children: [
+                          ReadMoreText(
+                            commentsProvider.commentsList?[index].body ?? "",
+                            trimLines: 3,
+                            preDataTextStyle:
+                                TextStyle(fontWeight: FontWeight.w500),
+                            style: TextStyle(color: Colors.black),
+                            colorClickableText:
+                                Color.fromARGB(255, 0, 119, 255),
+                            trimMode: TrimMode.Line,
+                            trimCollapsedText: 'Show more',
+                            trimExpandedText: '\nShow less',
                           ),
-                        ),
+                          const SizedBox(height: 10),
+                          Theme(
+                            data: ThemeData(
+                              iconTheme: IconThemeData(
+                                color: Colors.black,
+                                size: 18.0,
+                              ),
+                              // Other theme configurations
+                            ),
+                            child: Row(
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.all(
+                                      8.0), // Adjust the padding as needed
+                                  child: Icon(
+                                    Icons.thumb_up_off_alt_rounded,
+                                    color: Colors.blue, // Set the desired color
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Icon(
+                                    Icons.thumb_down_alt_rounded,
+                                    color: Colors.red, // Set the desired color
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Icon(
+                                    Icons.flag_circle_rounded,
+                                    color:
+                                        Colors.green, // Set the desired color
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        ],
                       ),
                     ),
                   ],
@@ -161,16 +215,21 @@ class _CommentsTabState extends State<CommentsTab> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
         onPressed: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AddComment(
-                editMode: false,
-                postId: 0,
-              ); // Show the AddComment dialog
-            },
-          );
+          // showDialog(
+          //   context: context,
+          //   builder: (BuildContext context) {
+          //     return const CommentInput(editMode: false, postId: 0);
+          //   },
+          // );
+
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => CommentInputs(
+                      editMode: false,
+                      id: (commentsProvider.commentsList!.length + 1))));
         },
       ),
     );
